@@ -4,6 +4,7 @@
 import prisma from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { calculateScore } from '@/lib/score'
+import { appendToSheet } from '@/lib/sheets'
 
 // Import logic
 export async function importStudents(data: { name: string; evoId: string; unit: string; frequency: number; consistency: number }[]) {
@@ -156,9 +157,19 @@ export async function saveCampaign(data: { title: string, audience: string, freq
         }
     });
 
-    // Mock Google Sheets Integration
-    console.log(`[Google Sheets API] Writing to 'Config_Campanhas' (Sheet ID: 1wb_CVBbFbasy9cvZFVyhZOLwZkcpUyrsvFP6a_OlbNo)`);
-    console.log(`Row: ${new Date().toISOString()}, ${campaign.title}, ${campaign.audience}, ${campaign.frequency}d, ${campaign.isActive}`);
+    // Real Google Sheets Integration
+    try {
+        await appendToSheet('Config_Campanhas', {
+            Data: new Date().toISOString(),
+            Campanha: campaign.title,
+            Publico: campaign.audience,
+            Frequencia: `${campaign.frequency}d`,
+            Conteudo: campaign.messageContent,
+            Status: campaign.isActive ? 'Ativo' : 'Inativo'
+        });
+    } catch (e) {
+        console.error('Failed to sync campaign to Google Sheets:', e);
+    }
 
     revalidatePath('/admin');
     return { success: true, campaign };
@@ -202,4 +213,22 @@ export async function getRetentionIntelligence() {
     });
 
     return { funnel, biRatio, biCount, beCount, trainingMods, feedbacks };
+}
+
+export async function toggleCampaign(id: string, currentStatus: boolean) {
+    const campaign = await prisma.campaign.update({
+        where: { id },
+        data: { isActive: !currentStatus }
+    });
+
+    // Optional: Log status change to Google Sheets? 
+    // For now just revalidate.
+    revalidatePath('/admin');
+    return { success: true, campaign };
+}
+
+export async function deleteCampaign(id: string) {
+    await prisma.campaign.delete({ where: { id } });
+    revalidatePath('/admin');
+    return { success: true };
 }

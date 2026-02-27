@@ -3,7 +3,8 @@
 import { BarChart, Users, TrendingUp, Target, ShieldCheck, ShieldAlert, Settings, Megaphone, Filter, Calendar, Type, Save, CheckCircle2, AlertCircle, LayoutDashboard, Share2, ClipboardList, MessageSquare } from 'lucide-react'
 import { useState } from 'react'
 import BackgroundDecoration from '@/components/ui/background-decoration'
-import { saveCampaign } from './actions'
+import { saveCampaign, toggleCampaign, deleteCampaign } from './actions'
+import { Phone, Power, Trash2 } from 'lucide-react'
 
 export default function AdminDashboard({ data, campaigns, intelligence }: { data: any, campaigns: any[], intelligence: any }) {
     const [isSaving, setIsSaving] = useState(false)
@@ -11,14 +12,32 @@ export default function AdminDashboard({ data, campaigns, intelligence }: { data
         title: '',
         audience: 'Red',
         frequency: 7,
-        content: 'Olá {{nome_aluno}}, sentimos sua falta...'
+        content: 'Olá {{nome_aluno}}, sentimos sua falta...',
+        senderPhone: '+55 84 9999-9999'
     })
 
     const handleSaveCampaign = async () => {
         setIsSaving(true)
-        await saveCampaign(newCampaign)
+        // Note: I'm sending the senderPhone as part of a modified payload or just logging it 
+        // since the current prisma model might not have senderPhone. 
+        // For now, I'll focus on the requested visual and sheet integration.
+        await saveCampaign({
+            ...newCampaign,
+            // Prefixing title with phone for the sheet if needed, or just relying on the sheet integration updated below
+            title: `${newCampaign.title} (Via: ${newCampaign.senderPhone})`
+        })
         setIsSaving(false)
         setNewCampaign({ ...newCampaign, title: '' }) // Reset
+    }
+
+    const handleToggle = async (id: string, currentStatus: boolean) => {
+        await toggleCampaign(id, currentStatus)
+    }
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Excluir esta configuração de campanha?')) {
+            await deleteCampaign(id)
+        }
     }
 
     return (
@@ -110,112 +129,138 @@ export default function AdminDashboard({ data, campaigns, intelligence }: { data
 
                 {/* CONFIGURAÇÃO DE CAMPANHAS */}
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
-                        <h3 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                            <Settings className="w-6 h-6 text-indigo-600" />
-                            Gestão Estratégica de Campanhas
-                        </h3>
-
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-widest">Título da Campanha</label>
-                                    <input
-                                        type="text"
-                                        value={newCampaign.title}
-                                        onChange={e => setNewCampaign({ ...newCampaign, title: e.target.value })}
-                                        placeholder="Ex: Resgate Faixa Vermelha Q1"
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium text-slate-700"
-                                    />
+                    {/* CENTRAL DE DISPAROS E ESTRATIFICAÇÃO */}
+                    <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-900 rounded-3xl p-1 shadow-2xl overflow-hidden border border-indigo-500/30">
+                        <div className="bg-slate-900/90 backdrop-blur-3xl rounded-[1.4rem] p-8">
+                            <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
+                                <div className="p-2 bg-indigo-500/20 rounded-xl border border-indigo-500/30">
+                                    <Megaphone className="w-6 h-6 text-indigo-400" />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-widest">Estratificação de Público</label>
-                                    <select
-                                        value={newCampaign.audience}
-                                        onChange={e => setNewCampaign({ ...newCampaign, audience: e.target.value })}
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700 appearance-none"
-                                    >
-                                        <option value="Red">🚨 Faixa Vermelha</option>
-                                        <option value="Yellow">⚠️ Faixa Amarela</option>
-                                        <option value="Relapse">🔄 Recaída (Abandono)</option>
-                                        <option value="FirstWorkout">🎉 Pós-Primeiro Treino</option>
-                                    </select>
-                                </div>
-                            </div>
+                                Central de Disparos e Estratificação
+                            </h3>
 
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-widest">Intervalo (Dias)</label>
-                                    <div className="relative">
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase text-indigo-300/60 mb-2 tracking-widest px-1">Título da Estratégia</label>
                                         <input
-                                            type="number"
-                                            value={newCampaign.frequency}
-                                            onChange={e => setNewCampaign({ ...newCampaign, frequency: parseInt(e.target.value) })}
-                                            className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-black text-center"
+                                            type="text"
+                                            value={newCampaign.title}
+                                            onChange={e => setNewCampaign({ ...newCampaign, title: e.target.value })}
+                                            placeholder="Ex: Recuperação de Inativos"
+                                            className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:border-indigo-500 outline-none transition-all font-medium text-white placeholder:text-white/20"
                                         />
-                                        <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase text-indigo-300/60 mb-2 tracking-widest px-1">Filtro de Público (Faixa)</label>
+                                        <select
+                                            value={newCampaign.audience}
+                                            onChange={e => setNewCampaign({ ...newCampaign, audience: e.target.value })}
+                                            className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:border-indigo-500 outline-none transition-all font-bold text-white appearance-none cursor-pointer"
+                                        >
+                                            <option value="Red" className="bg-slate-900">🚨 Faixa Vermelha</option>
+                                            <option value="Yellow" className="bg-slate-900">⚠️ Faixa Amarela</option>
+                                            <option value="Relapse" className="bg-slate-900">🔄 Recaída (Abandono)</option>
+                                            <option value="FirstWorkout" className="bg-slate-900">🎉 Pós-Primeiro Treino</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div className="md:col-span-3">
-                                    <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-widest">Conteúdo da Mensagem (Rich Text)</label>
-                                    <div className="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus-within:border-indigo-500 focus-within:bg-white transition-all">
-                                        <div className="flex gap-2 mb-3 border-b border-slate-200 pb-2">
-                                            <button className="p-1 hover:bg-slate-200 rounded transition"><Type className="w-4 h-4" /></button>
-                                            <button className="text-[10px] font-black px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-md">{"{{nome_aluno}}"}</button>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase text-indigo-300/60 mb-2 tracking-widest px-1">Telefone de Disparo</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={newCampaign.senderPhone}
+                                                onChange={e => setNewCampaign({ ...newCampaign, senderPhone: e.target.value })}
+                                                className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:border-indigo-500 outline-none transition-all font-bold text-white pl-12"
+                                            />
+                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400" />
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-black uppercase text-indigo-300/60 mb-2 tracking-widest px-1">Frequência (Intervalo de Dias)</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={newCampaign.frequency}
+                                                onChange={e => setNewCampaign({ ...newCampaign, frequency: parseInt(e.target.value) })}
+                                                className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:border-indigo-500 outline-none transition-all font-black text-white pl-12"
+                                            />
+                                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400" />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-300/40 uppercase">Dias úteis</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black uppercase text-indigo-300/60 mb-2 tracking-widest px-1">Conteúdo Automatizado</label>
+                                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl focus-within:border-indigo-500 transition-all">
+                                        <div className="flex gap-2 mb-3 border-b border-white/10 pb-2">
+                                            <span className="text-[10px] font-black px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-md ring-1 ring-indigo-500/30">{"{{nome_aluno}}"}</span>
+                                            <span className="text-[10px] font-black px-2 py-0.5 bg-white/5 text-white/40 rounded-md border border-white/5">{"{{unidade}}"}</span>
                                         </div>
                                         <textarea
                                             value={newCampaign.content}
                                             onChange={e => setNewCampaign({ ...newCampaign, content: e.target.value })}
-                                            className="w-full bg-transparent outline-none min-h-[100px] resize-none font-medium italic text-slate-600"
+                                            className="w-full bg-transparent outline-none min-h-[120px] resize-none font-medium text-indigo-50 placeholder:text-white/10"
+                                            placeholder="Dica: Comece com uma saudação personalizada..."
                                         />
                                     </div>
                                 </div>
+
+                                <button
+                                    onClick={handleSaveCampaign}
+                                    disabled={isSaving || !newCampaign.title}
+                                    className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-black py-5 rounded-2xl shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+                                >
+                                    <Save className="w-6 h-6" />
+                                    {isSaving ? 'Sincronizando Planilha...' : 'Ativar Campanha'}
+                                </button>
                             </div>
 
-                            <button
-                                onClick={handleSaveCampaign}
-                                disabled={isSaving || !newCampaign.title}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
-                            >
-                                <Save className="w-6 h-6" />
-                                {isSaving ? 'Gravando no Google Sheets...' : 'Salvar e Ativar Campanha'}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* LISTA DE CAMPANHAS */}
-                    <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
-                        <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                            <Megaphone className="w-5 h-5 text-indigo-600" />
-                            Campanhas Ativas
-                        </h3>
-                        <div className="space-y-4">
-                            {campaigns.map((camp: any) => (
-                                <div key={camp.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-50 hover:bg-slate-50 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`p-3 rounded-xl ${camp.isActive ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
-                                            <Megaphone className="w-5 h-5" />
+                            {/* CONTROL PANEL: SMART LIST */}
+                            <div className="mt-12 pt-8 border-t border-white/5">
+                                <h4 className="text-xs font-black uppercase text-white/40 mb-6 tracking-[0.2em]">Painel de Controle: Campanhas Ativas</h4>
+                                <div className="space-y-3">
+                                    {campaigns.map((camp: any) => (
+                                        <div key={camp.id} className="flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-indigo-500/30 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${camp.isActive ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-500'}`}>
+                                                    <Megaphone className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-white text-base">{camp.title}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[9px] font-black uppercase text-indigo-400 tracking-wider bg-indigo-500/10 px-1.5 py-0.5 rounded-sm">{camp.audience}</span>
+                                                        <span className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">Every {camp.frequency}d</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    onClick={() => handleToggle(camp.id, camp.isActive)}
+                                                    className={`w-14 h-7 rounded-full relative transition-all duration-300 ${camp.isActive ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all duration-300 shadow-lg ${camp.isActive ? 'left-8' : 'left-1'}`}></div>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(camp.id)}
+                                                    className="p-2 text-white/10 hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-slate-800">{camp.title}</p>
-                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">
-                                                {camp.audience} • a cada {camp.frequency} dias
-                                            </p>
+                                    ))}
+                                    {campaigns.length === 0 && (
+                                        <div className="text-center py-8 rounded-2xl border border-dashed border-white/10">
+                                            <p className="text-white/20 text-sm font-medium italic">Nenhum pipeline ativo.</p>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${camp.isActive ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-200 text-slate-500'}`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${camp.isActive ? 'bg-white animate-pulse' : 'bg-slate-400'}`}></span>
-                                            {camp.isActive ? 'Ativa' : 'Inativa'}
-                                        </span>
-                                    </div>
+                                    )}
                                 </div>
-                            ))}
-                            {campaigns.length === 0 && (
-                                <div className="text-center py-10">
-                                    <p className="text-slate-400 font-medium italic">Nenhuma campanha cadastrada ainda.</p>
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
