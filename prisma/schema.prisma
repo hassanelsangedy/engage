@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id              String   @id @default(cuid())
+  evoId           String   @unique
+  name            String
+  unit            String?
+  phone           String?
+  
+  // Current Month Snapshot (from last import)
+  frequency       Int      @default(0) // Treinos no mes
+  consistency     Int      @default(0) // Semanas no mes
+  score           Int      @default(0) // 2-8
+  band            String   @default("Unknown") // Red, Yellow, Green
+  
+  // Tracking
+  lastWorkoutDate DateTime? 
+  nextCheckIn     DateTime? // Scheduled
+  
+  // Risk Factors calculated
+  riskType        String?  // Internal / External / None
+  barrier         String?  // "Monotony", "Lost", etc.
+
+  // Relations
+  interactions    Interaction[]
+  history         AttendanceHistory[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AttendanceHistory {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  month       String   // "2023-10"
+  frequency   Int
+  consistency Int
+  score       Int
+  band        String
+  importedAt  DateTime @default(now())
+}
+
+model Interaction {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  type        String   // "Reception_Alert", "Professor_Adjustment", "Coordinator_Review", "Hook_Message", "FollowUp_24h", "Generic"
+  content     String?  // Message sent or notes taken
+  outcome     String?  // "Resolved", "Pending"
+  staffRole   String?  // "Receptionist", "Professor", "Coordinator"
+  barrierType String?  // "BI" (Internal) or "BE" (External)
+  trainingMod String?  // Detailed training modification note
+  createdAt   DateTime @default(now())
+}
+
+model Campaign {
+    id              String   @id @default(cuid())
+    title           String
+    audience        String   // "Red", "Yellow", "Relapse", "FirstWorkout"
+    frequency       Int      @default(1) // days
+    messageContent  String
+    isActive        Boolean  @default(true)
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+}
+
+model AppConfig {
+    id          String @id @default(cuid())
+    key         String @unique
+    value       String
+}
