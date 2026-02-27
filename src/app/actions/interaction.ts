@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function registerInteraction(data: {
     studentId: string
-    type: 'Reception_Alert' | 'Professor_Adjustment' | 'Coordinator_Review' | 'Hook_Message' | 'FollowUp_24h'
+    type: 'Reception_Alert' | 'Professor_Adjustment' | 'Coordinator_Review' | 'Hook_Message' | 'FollowUp_24h' | 'Student_Response'
     content?: string
     outcome?: string
     staffRole: string

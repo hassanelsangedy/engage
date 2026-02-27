@@ -2,6 +2,7 @@
 'use server'
 
 import prisma from '@/lib/db'
+import { Student } from '@/lib/types'
 
 export async function searchStudent(query: string) {
     if (!query) return null;
@@ -34,7 +35,7 @@ export async function getRiskList(unit?: string) {
             { updatedAt: 'desc' }
         ],
         take: 50
-    });
+    }) as unknown as Student[];
 }
 
 export async function registerCheckIn(evoId: string) {

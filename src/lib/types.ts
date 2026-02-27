@@ -19,7 +19,7 @@ export interface Student {
 export interface Interaction {
     id: string;
     studentId: string;
-    type: 'Reception_Alert' | 'Professor_Adjustment' | 'Coordinator_Review' | 'Hook_Message' | 'FollowUp_24h' | 'Generic';
+    type: 'Reception_Alert' | 'Professor_Adjustment' | 'Coordinator_Review' | 'Hook_Message' | 'FollowUp_24h' | 'Generic' | 'Student_Response';
     content: string | null;
     outcome: string | null;
     staffRole: string | null;
