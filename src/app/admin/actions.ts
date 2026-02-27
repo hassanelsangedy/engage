@@ -185,8 +185,9 @@ export async function getRetentionIntelligence() {
     // Funnel Mock (In real app, query different interaction types)
     const funnel = {
         sent: await prisma.interaction.count({ where: { type: 'Hook_Message' } }),
-        reached: await prisma.interaction.count({ where: { type: 'Reception_Alert' } }),
-        reference: await prisma.interaction.count({ where: { type: 'Professor_Adjustment' } }),
+        responses: await prisma.interaction.count({ where: { type: 'Student_Response' } }),
+        reception: await prisma.interaction.count({ where: { type: 'Reception_Alert' } }),
+        adjustment: await prisma.interaction.count({ where: { type: 'Professor_Adjustment' } }),
         validation: await prisma.interaction.count({ where: { type: 'Coordinator_Review' } })
     };
 

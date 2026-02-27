@@ -57,6 +57,49 @@ export default function AdminDashboard({ data, campaigns, intelligence }: { data
                 </div>
             </header>
 
+            {/* SECTION 0: INTELIGÊNCIA E PERFORMANCE (Top KPIs) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10 mb-8">
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 group hover:shadow-lg transition-all duration-500">
+                    <div className="bg-indigo-100 p-4 rounded-2xl text-indigo-600 group-hover:scale-110 transition-transform">
+                        <Users className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Contatados</p>
+                        <h3 className="text-3xl font-black text-slate-900">{intelligence.funnel.sent}</h3>
+                    </div>
+                </div>
+
+                <div className={`rounded-3xl p-6 border shadow-sm flex items-center gap-5 transition-all duration-500 group ${intelligence.biRatio > 20 ? 'bg-red-600 border-red-500 text-white shadow-red-200' : 'bg-white border-gray-100 text-slate-900 overflow-hidden relative'}`}>
+                    {intelligence.biRatio > 20 && (
+                        <div className="absolute inset-0 bg-red-500 animate-pulse opacity-20 pointer-events-none"></div>
+                    )}
+                    <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 ${intelligence.biRatio > 20 ? 'bg-white/20 text-white' : 'bg-red-50 text-red-600'}`}>
+                        <ShieldAlert className="w-6 h-6" />
+                    </div>
+                    <div className="relative z-10">
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${intelligence.biRatio > 20 ? 'text-red-100' : 'text-slate-400'}`}>Barreiras Internas (BI)</p>
+                        <h3 className="text-3xl font-black">{Math.round(intelligence.biRatio)}%</h3>
+                    </div>
+                    {intelligence.biRatio > 20 && (
+                        <div className="ml-auto">
+                            <span className="text-[8px] font-black bg-white text-red-600 px-2 py-1 rounded-full animate-bounce">CRÍTICO</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 group hover:shadow-lg transition-all duration-500">
+                    <div className="bg-emerald-50 p-4 rounded-2xl text-emerald-600 group-hover:scale-110 transition-transform">
+                        <Share2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Barreiras Externas (BE)</p>
+                        <h3 className="text-3xl font-black">{100 - Math.round(intelligence.biRatio)}%</h3>
+                    </div>
+                </div>
+            </div>
+
+            {/* TAB NAV (Simplified) */}
+
             {/* TAB NAV (Simplified) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10 mb-12">
 
@@ -99,9 +142,9 @@ export default function AdminDashboard({ data, campaigns, intelligence }: { data
                     <div className="space-y-4">
                         {[
                             { label: 'Mensagens Enviadas', value: intelligence.funnel.sent, color: 'bg-indigo-100 text-indigo-700', icon: Megaphone, pct: 100 },
-                            { label: 'Alunos na Recepção', value: intelligence.funnel.reached, color: 'bg-blue-100 text-blue-700', icon: Users, pct: intelligence.funnel.sent > 0 ? (intelligence.funnel.reached / intelligence.funnel.sent) * 100 : 0 },
-                            { label: 'Ajuste de Referência', value: intelligence.funnel.reference, color: 'bg-indigo-600 text-white', icon: Target, pct: intelligence.funnel.reached > 0 ? (intelligence.funnel.reference / intelligence.funnel.reached) * 100 : 0 },
-                            { label: 'Validação Supervisor', value: intelligence.funnel.validation, color: 'bg-emerald-500 text-white', icon: ShieldCheck, pct: intelligence.funnel.reference > 0 ? (intelligence.funnel.validation / intelligence.funnel.reference) * 100 : 0 },
+                            { label: 'Respostas Recebidas', value: intelligence.funnel.responses, color: 'bg-blue-100 text-blue-700', icon: MessageSquare, pct: intelligence.funnel.sent > 0 ? (intelligence.funnel.responses / intelligence.funnel.sent) * 100 : 0 },
+                            { label: 'Procuraram Recepção', value: intelligence.funnel.reception, color: 'bg-indigo-600 text-white', icon: Users, pct: intelligence.funnel.responses > 0 ? (intelligence.funnel.reception / intelligence.funnel.responses) * 100 : 0 },
+                            { label: 'Conversão em Ajuste', value: intelligence.funnel.adjustment, color: 'bg-emerald-500 text-white', icon: Target, pct: intelligence.funnel.reception > 0 ? (intelligence.funnel.adjustment / intelligence.funnel.reception) * 100 : 0 },
                         ].map((stage, i) => (
                             <div key={i} className="group cursor-default">
                                 <div className="flex justify-between items-center mb-1.5">
