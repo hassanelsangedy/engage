@@ -4,7 +4,7 @@
 import prisma from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { calculateScore } from '@/lib/score'
-import { appendToSheet } from '@/lib/sheets'
+import { appendToSheet, getSheetRows } from '@/lib/sheets'
 
 // Import logic
 export async function importStudents(data: { name: string; evoId: string; unit: string; frequency: number; consistency: number }[]) {
@@ -197,21 +197,43 @@ export async function getRetentionIntelligence() {
     const totalBarrier = biCount + beCount;
     const biRatio = totalBarrier > 0 ? (biCount / totalBarrier) * 100 : 0;
 
-    // Training Mods
-    const trainingMods = await prisma.interaction.findMany({
-        where: { trainingMod: { not: null } },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        include: { student: true }
-    });
+    // --- DATA FROM GOOGLE SHEETS (REALTIME) ---
+    // User requested pull from Logs_Interacoes and Feedbacks
+    const sheetInteractions = await getSheetRows('Logs_Interacoes');
+    const sheetFeedbacks = await getSheetRows('Feedbacks');
 
-    // Ombuds Feedbacks
-    const feedbacks = await prisma.interaction.findMany({
-        where: { type: 'Coordinator_Review' },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        include: { student: true }
-    });
+    // Transform sheet data to match component expectations
+    // Note: If sheet is empty, it falls back to the DB query below
+
+    let trainingMods = sheetInteractions.length > 0
+        ? sheetInteractions.map((row: any, i) => ({
+            id: `sheet-i-${i}`,
+            student: { name: row.Aluno || row.Name || 'Aluno' },
+            trainingMod: row.Modificacao || row.Notes || 'Ajuste Geral',
+            unit: row.Unidade || 'Geral',
+            status: row.Status || 'Finalizado'
+        })).slice(0, 10)
+        : await prisma.interaction.findMany({
+            where: { trainingMod: { not: null } },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            include: { student: true }
+        });
+
+    let feedbacks = sheetFeedbacks.length > 0
+        ? sheetFeedbacks.map((row: any, i) => ({
+            id: `sheet-f-${i}`,
+            student: { name: row.Aluno || 'Aluno' },
+            content: row.Feedback || 'Sem comentário',
+            sentiment: row.Sentimento || (row.Satisfacao === 'Alta' ? 'Verde' : 'Amarelo'),
+            createdAt: row.Data || new Date().toISOString()
+        })).slice(0, 10)
+        : await prisma.interaction.findMany({
+            where: { type: 'Coordinator_Review' },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            include: { student: true }
+        });
 
     return { funnel, biRatio, biCount, beCount, trainingMods, feedbacks };
 }

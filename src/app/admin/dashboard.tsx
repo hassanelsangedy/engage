@@ -387,33 +387,48 @@ export default function AdminDashboard({ data, campaigns, intelligence }: { data
             {/* AUDITORIA TÉCNICA (TABLES & FEED) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
 
-                {/* TRAINING MODS TABLE */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
-                    <h3 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
-                        <ClipboardList className="w-5 h-5 text-indigo-600" />
-                        Audit: Modificações de Treino
-                    </h3>
+                {/* AUDITORIA TÉCNICA (TABLES & FEED) */}
+                <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col group">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                            <ClipboardList className="w-5 h-5 text-indigo-600" />
+                            Auditoria: Modificações de Treino
+                        </h3>
+                        <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full uppercase tracking-widest border border-indigo-100 shadow-sm transition-all group-hover:bg-indigo-600 group-hover:text-white">
+                            Live from Logs_Interacoes
+                        </span>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50/50">
                                 <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                    <th className="py-4 px-4">Aluno</th>
-                                    <th className="py-4 px-4">Modificação</th>
-                                    <th className="py-4 px-4 text-right">Data</th>
+                                    <th className="py-4 px-4">Aluno / Unidade</th>
+                                    <th className="py-4 px-4">Intervenção (ATP/Vol)</th>
+                                    <th className="py-4 px-4 text-right">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 text-sm">
                                 {intelligence.trainingMods.map((mod: any) => (
-                                    <tr key={mod.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="py-4 px-4 font-bold text-slate-800">{mod.student.name}</td>
-                                        <td className="py-4 px-4 font-medium text-slate-500 italic">"{mod.trainingMod}"</td>
-                                        <td className="py-4 px-4 text-right text-[10px] font-bold text-slate-400">
-                                            {new Date(mod.createdAt).toLocaleDateString()}
+                                    <tr key={mod.id} className="hover:bg-slate-50/50 transition-colors group/row">
+                                        <td className="py-4 px-4">
+                                            <p className="font-bold text-slate-800">{mod.student?.name}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">{mod.unit || 'Matriz'}</p>
+                                        </td>
+                                        <td className="py-4 px-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-slate-600 italic">"{mod.trainingMod}"</span>
+                                                <span className="text-[9px] text-indigo-400 font-bold mt-1 uppercase tracking-tighter shrink-0">Ajuste de Referência</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 text-right">
+                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100 uppercase tracking-widest">
+                                                {mod.status || 'OK'}
+                                            </span>
                                         </td>
                                     </tr>
                                 ))}
                                 {intelligence.trainingMods.length === 0 && (
-                                    <tr><td colSpan={3} className="py-10 text-center italic text-slate-300">Nenhum registro encontrado.</td></tr>
+                                    <tr><td colSpan={3} className="py-10 text-center italic text-slate-300">Aguardando logs da planilha...</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -421,31 +436,47 @@ export default function AdminDashboard({ data, campaigns, intelligence }: { data
                 </div>
 
                 {/* FEEDBACK FEED (SCROLL) */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col h-full">
-                    <h3 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
-                        <MessageSquare className="w-5 h-5 text-indigo-600" />
-                        Ouvidoria: Feedbacks Recentes
-                    </h3>
+                <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col h-full group">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                            <MessageSquare className="w-5 h-5 text-indigo-600" />
+                            Ouvidoria Ativa: Feedbacks
+                        </h3>
+                        <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full uppercase tracking-widest border border-emerald-100 shadow-sm transition-all group-hover:bg-emerald-600 group-hover:text-white">
+                            Live from Feedbacks
+                        </span>
+                    </div>
                     <div className="flex-1 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-indigo-200">
                         <div className="flex gap-4 min-w-max pr-8">
                             {intelligence.feedbacks.map((fb: any, i: number) => (
-                                <div key={fb.id} className="w-80 p-6 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
-                                    <p className="text-xs font-medium text-slate-600 italic leading-relaxed mb-6">
-                                        "{fb.content?.split('Detalhes:')[1] || fb.content}"
-                                    </p>
+                                <div key={fb.id} className="w-80 p-6 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col justify-between hover:border-indigo-200 transition-all relative overflow-hidden">
+                                    {/* Sentiment Indicator (Sinalização) */}
+                                    <div className={`absolute top-0 right-0 w-12 h-1 ${fb.sentiment === 'Verde' ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
+
+                                    <div className="flex justify-between items-start mb-4">
+                                        <p className="text-xs font-medium text-slate-600 italic leading-relaxed">
+                                            "{fb.content?.split('Detalhes:')[1] || fb.content}"
+                                        </p>
+                                        <div className={`p-1.5 rounded-lg ${fb.sentiment === 'Verde' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            <CheckCircle2 className="w-4 h-4" />
+                                        </div>
+                                    </div>
+
                                     <div className="flex items-center gap-3 mt-auto pt-4 border-t border-slate-200/50">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xs uppercase">
-                                            {fb.student.name.substring(0, 2)}
+                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xs uppercase border-2 border-white shadow-sm">
+                                            {fb.student?.name?.substring(0, 2) || 'AL'}
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-slate-900">{fb.student.name}</p>
-                                            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">Resgatado em {new Date(fb.createdAt).toLocaleDateString()}</p>
+                                            <p className="text-xs font-black text-slate-900">{fb.student?.name || 'Aluno Anônimo'}</p>
+                                            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">
+                                                Resgate em {new Date(fb.createdAt).toLocaleDateString()}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                             {intelligence.feedbacks.length === 0 && (
-                                <div className="w-full text-center py-20 italic text-slate-300">Aguardando feedbacks...</div>
+                                <div className="w-full text-center py-20 italic text-slate-300">Aguardando feedbacks da planilha...</div>
                             )}
                         </div>
                     </div>

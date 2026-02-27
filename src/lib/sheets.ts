@@ -35,3 +35,30 @@ export async function appendToSheet(sheetTitle: string, data: any) {
         console.error('[Google Sheets] Error appending row:', error);
     }
 }
+
+export async function getSheetRows(sheetTitle: string) {
+    try {
+        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+        const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+        if (!email || !key) return [];
+
+        const serviceAccountAuth = new JWT({
+            email: email,
+            key: key,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+
+        const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
+        await doc.loadInfo();
+
+        const sheet = doc.sheetsByTitle[sheetTitle];
+        if (!sheet) return [];
+
+        const rows = await sheet.getRows();
+        return rows.map(r => r.toObject());
+    } catch (error) {
+        console.error('[Google Sheets] Error fetching rows:', error);
+        return [];
+    }
+}
