@@ -62,22 +62,22 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
     }
 
     return (
-        <div className="bg-white/5 backdrop-blur-3xl rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-xl">
             <div className="p-8">
                 <div className="flex items-center gap-3 mb-8">
-                    <div className="p-2.5 bg-indigo-500/20 rounded-xl border border-indigo-500/30">
-                        <Calendar className="w-6 h-6 text-indigo-400" />
+                    <div className="p-2.5 bg-indigo-500 rounded-xl border border-indigo-600 shadow-lg shadow-indigo-500/20">
+                        <Calendar className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-white">Módulo de Agendamento</h3>
-                        <p className="text-xs font-bold text-indigo-300/50 uppercase tracking-widest">Configuração de Disparo Recorrente</p>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Módulo de Agendamento</h3>
+                        <p className="text-xs font-bold text-slate-500 dark:text-indigo-300/50 uppercase tracking-widest">Configuração de Disparo Recorrente</p>
                     </div>
                 </div>
 
                 <div className="space-y-8">
                     {/* Time Selection */}
                     <div className="group">
-                        <label className="block text-[10px] font-black uppercase text-indigo-300/60 mb-3 tracking-widest px-1 flex items-center gap-2">
+                        <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-indigo-300/60 mb-3 tracking-widest px-1 flex items-center gap-2">
                             <Clock className="w-3 h-3" /> Hora do Disparo
                         </label>
                         <div className="relative max-w-[160px]">
@@ -85,9 +85,9 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
                                 type="time"
                                 value={time}
                                 onChange={(e) => setTime(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white font-black text-xl outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-black text-xl outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
                             />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/50">
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
                                 <ArrowRight className="w-4 h-4" />
                             </div>
                         </div>
@@ -95,10 +95,10 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
 
                     {/* Frequency Selection */}
                     <div>
-                        <label className="block text-[10px] font-black uppercase text-indigo-300/60 mb-3 tracking-widest px-1 flex items-center gap-2">
+                        <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-indigo-300/60 mb-3 tracking-widest px-1 flex items-center gap-2">
                             <Repeat className="w-3 h-3" /> Frequência
                         </label>
-                        <div className="grid grid-cols-3 gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+                        <div className="grid grid-cols-3 gap-2 bg-slate-200/50 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/5">
                             {(['WEEKLY', 'BIWEEKLY', 'MONTHLY'] as const).map((f) => (
                                 <button
                                     key={f}
@@ -107,7 +107,7 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
                                         "py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all",
                                         frequency === f
                                             ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                                            : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                                            : "text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white/70 hover:bg-white/50 dark:hover:bg-white/5"
                                     )}
                                 >
                                     {f === 'WEEKLY' ? 'Semanal' : f === 'BIWEEKLY' ? 'Quinzenal' : 'Mensal'}
@@ -118,7 +118,7 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
 
                     {/* Weekly Recurrence (Days of Week) */}
                     <div className="animate-in fade-in duration-500">
-                        <label className="block text-[10px] font-black uppercase text-indigo-300/60 mb-4 tracking-widest px-1">
+                        <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-indigo-300/60 mb-4 tracking-widest px-1">
                             Dias da Semana
                         </label>
                         <div className="flex justify-between items-center gap-2">
@@ -131,8 +131,8 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
                                         className={cn(
                                             "w-10 h-10 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
                                             active
-                                                ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/40 scale-110"
-                                                : "bg-white/5 text-white/30 hover:bg-white/10 border border-white/5"
+                                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 scale-110"
+                                                : "bg-white dark:bg-white/5 text-slate-400 dark:text-white/30 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5"
                                         )}
                                     >
                                         {day.label}
@@ -144,26 +144,26 @@ export default function SmartScheduling({ onSave, isSaving }: SmartSchedulingPro
 
                     {/* Summary / RRULE Preview */}
                     <div className="space-y-2">
-                        <div className="p-3 bg-indigo-500/5 rounded-2xl border border-indigo-500/10">
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-500/10">
                             <div className="flex items-center gap-2 mb-1">
-                                <Info className="w-3 h-3 text-indigo-400" />
-                                <span className="text-[9px] font-black uppercase text-indigo-400 tracking-widest">Lista de Dias (Planilha)</span>
+                                <Info className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                <span className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest">Lista de Dias (Planilha)</span>
                             </div>
-                            <span className="text-[10px] font-bold text-white/60">{friendlyDays}</span>
+                            <span className="text-[10px] font-bold text-slate-700 dark:text-white/60">{friendlyDays}</span>
                         </div>
-                        <div className="p-3 bg-indigo-500/5 rounded-2xl border border-indigo-500/10">
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-500/10">
                             <div className="flex items-center gap-2 mb-1">
-                                <Info className="w-3 h-3 text-indigo-400" />
-                                <span className="text-[9px] font-black uppercase text-indigo-400 tracking-widest">Lógica RRULE</span>
+                                <Info className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                <span className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest">Lógica RRULE</span>
                             </div>
-                            <code className="text-[9px] font-mono text-indigo-200/40 break-all">{rrule}</code>
+                            <code className="text-[9px] font-mono text-slate-500 dark:text-indigo-200/40 break-all">{rrule}</code>
                         </div>
                     </div>
 
                     <button
                         onClick={() => onSave(rrule, friendlyDays)}
                         disabled={isSaving || selectedDays.length === 0}
-                        className="w-full bg-white text-slate-900 font-black py-4 rounded-2xl shadow-xl hover:bg-indigo-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-50"
+                        className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black py-4 rounded-2xl shadow-xl hover:bg-slate-800 dark:hover:bg-indigo-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-50"
                     >
                         <Save className="w-5 h-5 group-hover:animate-bounce" />
                         {isSaving ? 'Agendando...' : 'Confirmar Agendamento'}

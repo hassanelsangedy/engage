@@ -1,74 +1,105 @@
 
-import { getSheetRows, updateRowById, appendToSheet } from './sheets';
+import { supabase } from './supabase';
 import { Student, Band } from './types';
+import { getStatusFromScore } from './score';
 
 export async function getAllAtRiskStudents(unit?: string): Promise<Student[]> {
     try {
-        const rows = await getSheetRows('Base_Alunos');
+        let query = supabase
+            .from('alunos')
+            .select('*')
+            .in('faixa_cor', ['Red', 'Vermelha', 'Yellow', 'Amarela']);
 
-        return rows
-            .filter((r: any) => {
-                const isAtRisk = ['Vermelha', 'Amarela', 'Red', 'Yellow'].includes(r.Faixa_Cor);
-                if (!isAtRisk) return false;
-                if (unit && r.Unidade && !r.Unidade.toLowerCase().includes(unit.toLowerCase())) return false;
-                return true;
-            })
-            .map((r: any) => ({
-                id: r.ID_Geral || r.ID_Aluno || String(r.ID_EVO),
-                evoId: String(r.ID_EVO || r.ID_Aluno),
-                name: r.Nome || 'Aluno sem Nome',
-                unit: r.Unidade || null,
-                phone: r.Telefone || null,
-                frequency: Number(r.Frequencia_Mensal) || 0,
-                consistency: Number(r.Consistencia_Semanal) || 0,
-                score: Number(r.Pontuacao_Risco) || 0,
-                band: (r.Faixa_Cor === 'Vermelha' || r.Faixa_Cor === 'Red') ? 'Red' : 'Yellow' as Band,
-                barrier: r.Barreira_Relatada || null,
-                barrierType: r.Classificacao_IA || null,
-                lastWorkoutDate: r.Ultima_Presenca ? new Date(r.Ultima_Presenca) : null,
-                updatedAt: new Date(r.Ultima_Interacao || Date.now())
-            }));
+        if (unit) {
+            query = query.ilike('unidade', `%${unit.replace(/_/g, ' ')}%`);
+        }
+
+        const { data: rows, error } = await query;
+
+        if (error) throw error;
+
+        return rows.map((r: any) => {
+            const score = Number(r.pontuacao_risco) || 0;
+            const { status, band } = getStatusFromScore(score);
+            
+            return {
+                id: r.id,
+                evoId: r.id_evo,
+                name: r.nome || 'Aluno sem Nome',
+                unit: r.unidade || null,
+                phone: r.telefone || null,
+                score: score,
+                statusAdesao: r.status_adesao || status,
+                band: r.faixa_cor || band,
+                barrier: r.barreira_relatada || null,
+                barrierType: r.barreira || null,
+                lastWorkoutDate: r.ultima_presenca ? new Date(r.ultima_presenca) : null,
+                updatedAt: new Date(r.updated_at || Date.now()),
+                frequency: 0, // Not originally in Supabase schema but in Student type
+                consistency: 0,
+            };
+        });
     } catch (error) {
-        console.error('Error fetching students from Sheets:', error);
+        console.error('Error fetching students from Supabase:', error);
         return [];
     }
 }
 
-export async function getStudentByEvoId(evoId: string): Promise<Student | null> {
-    const rows = await getSheetRows('Base_Alunos');
-    const row = rows.find((r: any) => String(r.ID_EVO || r.ID_Aluno) === evoId);
-    if (!row) return null;
+export async function getStudentByEvoId(evoId: string, unit?: string): Promise<Student | null> {
+    try {
+        let query = supabase
+            .from('alunos')
+            .select('*')
+            .eq('id_evo', evoId);
 
-    return {
-        id: row.ID_Geral || row.ID_Aluno || String(row.ID_EVO),
-        evoId: String(row.ID_EVO || row.ID_Aluno),
-        name: row.Nome || 'Aluno sem Nome',
-        unit: row.Unidade || null,
-        phone: row.Telefone || null,
-        frequency: Number(row.Frequencia_Mensal) || 0,
-        consistency: Number(row.Consistencia_Semanal) || 0,
-        score: Number(row.Pontuacao_Risco) || 0,
-        band: (row.Faixa_Cor === 'Vermelha' || row.Faixa_Cor === 'Red') ? 'Red' : 'Yellow' as Band,
-        barrier: row.Barreira_Relatada || null,
-        barrierType: row.Classificacao_IA || null,
-        lastWorkoutDate: row.Ultima_Presenca ? new Date(row.Ultima_Presenca) : null,
-        updatedAt: new Date(row.Ultima_Interacao || Date.now())
-    };
+        if (unit) {
+            query = query.ilike('unidade', `%${unit.replace(/_/g, ' ')}%`);
+        }
+
+        const { data: row, error } = await query.single();
+
+        if (error || !row) return null;
+
+        const score = Number(row.pontuacao_risco) || 0;
+        const { status, band } = getStatusFromScore(score);
+
+        return {
+            id: row.id,
+            evoId: row.id_evo,
+            name: row.nome || 'Aluno sem Nome',
+            unit: row.unidade || null,
+            phone: row.telefone || null,
+            score: score,
+            statusAdesao: row.status_adesao || status,
+            band: row.faixa_cor || band,
+            barrier: row.barreira_relatada || null,
+            barrierType: row.barreira || null,
+            lastWorkoutDate: row.ultima_presenca ? new Date(row.ultima_presenca) : null,
+            updatedAt: new Date(row.updated_at || Date.now()),
+            frequency: 0,
+            consistency: 0
+        };
+    } catch (error) {
+        console.error('Error fetching student from Supabase:', error);
+        return null;
+    }
 }
 
 export async function registerReceptionLog(evoId: string, content: string) {
-    await appendToSheet('Logs_Interacoes', {
-        Data_Hora: new Date().toISOString(),
-        ID_Aluno: evoId,
-        Tipo: 'Acolhimento',
-        Mensagem: content,
-        Status_Entrega: 'OK'
+    // 1. Get internal UUID from id_evo
+    const { data: student } = await supabase.from('alunos').select('id').eq('id_evo', evoId).single();
+    if (!student) return;
+
+    // 2. Log interaction
+    await supabase.from('logs_interacoes').insert({
+        aluno_id: student.id,
+        tipo: 'Acolhimento',
+        mensagem: content,
+        status_entrega: 'OK'
     });
 
-    // Update the signaling flag for the professor dashboard
-    // We'll use a specific column 'Acolhimento_Pendente' if it exists, or just update 'Ultima_Interacao'
-    await updateRowById('Base_Alunos', 'ID_EVO', evoId, {
-        Acolhimento_Pendente: 'Sim',
-        Ultima_Interacao: new Date().toISOString()
-    });
+    // 3. Update student
+    await supabase.from('alunos').update({
+        updated_at: new Date().toISOString()
+    }).eq('id', student.id);
 }

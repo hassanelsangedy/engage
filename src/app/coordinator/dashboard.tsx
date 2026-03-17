@@ -12,8 +12,12 @@ import {
     AlertTriangle,
     Smile,
     Meh,
-    Frown
+    Frown,
+    Zap,
+    Users,
+    BarChart3
 } from 'lucide-react'
+import Link from 'next/link'
 import { registerInteraction } from '@/app/actions/interaction'
 import BackgroundDecoration from '@/components/ui/background-decoration'
 
@@ -62,14 +66,30 @@ export default function CoordinatorDashboard({
         <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
             <BackgroundDecoration />
 
-            <header className="mb-10 relative z-10">
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2 text-slate-900">Validar Ajuste (Pós-Treino)</h1>
-                <p className="text-gray-500">Gestão de Qualidade e Ouvidoria Ativa</p>
-                {unit && (
-                    <div className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded-md inline-block mt-2">
-                        Unidade: {unit.toUpperCase()}
-                    </div>
-                )}
+            <header className="mb-10 relative z-10 flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2 text-slate-900">Validar Ajuste (Pós-Treino)</h1>
+                    <p className="text-gray-500">Gestão de Qualidade e Ouvidoria Ativa</p>
+                    {unit && (
+                        <div className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded-md inline-block mt-2">
+                            Unidade: {unit.toUpperCase()}
+                        </div>
+                    )}
+                </div>
+                <div className="flex gap-3">
+                    <Link href="/coordinator/journey" className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm border border-slate-200">
+                        <Users className="w-4 h-4" />
+                        Jornada
+                    </Link>
+                    <Link href="/coordinator/retention" className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm border border-slate-200">
+                        <BarChart3 className="w-4 h-4" />
+                        Monitor
+                    </Link>
+                    <Link href="/coordinator/strategic" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all active:scale-95">
+                        <Zap className="w-4 h-4" />
+                        Central Estratégica
+                    </Link>
+                </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">

@@ -68,9 +68,9 @@ export class EvoService {
     private getMockLogs(): EvoAccessLog[] {
         const now = new Date();
         return [
-            { idMember: 1001, name: "João Silva", date: now.toISOString(), unit: "Centro" },
-            { idMember: 1002, name: "Maria Souza", date: new Date(now.getTime() - 1000 * 60 * 30).toISOString(), unit: "Centro" },
-            { idMember: 1003, name: "Carlos Pereira", date: new Date(now.getTime() - 1000 * 60 * 60).toISOString(), unit: "Norte" }
+            { idMember: 1001, name: "João Silva", date: now.toISOString(), unit: "Ribeirão Pires" },
+            { idMember: 1002, name: "Maria Souza", date: new Date(now.getTime() - 1000 * 60 * 30).toISOString(), unit: "Pereira Barreto (Santo André)" },
+            { idMember: 1003, name: "Carlos Pereira", date: new Date(now.getTime() - 1000 * 60 * 60).toISOString(), unit: "Guilhermina" }
         ];
     }
 }

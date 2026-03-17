@@ -1,11 +1,7 @@
-
 import { RRule } from 'rrule'
 import cron from 'node-cron'
 import { sendWhatsAppMessage } from '../src/lib/whatsapp'
-import { getSheetRows, updateSheetRow, appendToSheet } from '../src/lib/sheets'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { getSheetRows, updateRowById, appendToSheet } from '../src/lib/sheets'
 
 /**
  * MOTOR DE CRONOGRAMA (Schedule Engine)
@@ -83,61 +79,68 @@ async function processCampaignsFromSheet() {
 
 /**
  * EXECUÇÃO DE TRIAGEM E ENVIO
- * Filtra alunos no Neon DB e registra logs.
+ * Filtra alunos na Planilha e registra logs.
  */
 async function executeTriageAndSend(title: string, audience: string, content: string) {
     const audienceMap: any = {
-        'Faixa Vermelha': 'Red',
-        'Faixa Amarela': 'Yellow',
-        'Faixa Verde': 'Green',
-        'Faixa Azul': 'Blue',
+        'Faixa Vermelha': 'Vermelha',
+        'Faixa Amarela': 'Amarela',
+        'Faixa Verde': 'Verde',
+        'Faixa Azul': 'Azul',
         'Recaída': 'Relapse'
     }
     const targetBand = audienceMap[audience] || audience
 
-    // 1. Filtrar na Tabela_Alunos (Neon DB)
-    const students = await prisma.student.findMany({
-        where: { band: targetBand as any }
-    })
+    // 1. Filtrar na Base_Alunos (Google Sheets)
+    const allStudents = await getSheetRows('Base_Alunos')
+    const students = allStudents.filter((s: any) => s.Faixa_Cor === targetBand)
 
     console.log(`[ScheduleEngine] Triagem: ${students.length} alunos encontrados na faixa "${targetBand}"`)
 
     for (const student of students) {
-        if (!student.phone) continue
+        const phone = student.Telefone || student.phone
+        if (!phone) continue
 
-        const formattedMsg = content.replace(/\{\{nome_aluno\}\}/g, student.name)
+        const studentName = student.Nome || student.name || 'Aluno'
+        const evoId = student.ID_EVO || student.evoId || student.id
+
+        const formattedMsg = content.replace(/\{\{nome_aluno\}\}/g, studentName.split(' ')[0])
 
         // 2. Enviar via API de WhatsApp
-        const result = await sendWhatsAppMessage(student.phone, formattedMsg)
+        const result = await sendWhatsAppMessage(phone, formattedMsg)
 
         // 3. Registrar Log de Envio Real na Planilha (Aba Logs_Envio)
         try {
+            const timestamp = new Date().toISOString()
             await appendToSheet('Logs_Envio', {
                 Data: new Date().toLocaleString('pt-BR'),
+                Data_Hora: timestamp,
                 Campanha: title,
-                Aluno: student.name,
-                Telefone: student.phone,
+                Aluno: studentName,
+                Telefone: phone,
                 Mensagem: formattedMsg,
                 Status: result.success ? 'Enviado' : 'Falhou'
+            })
+
+            // Registrar também como Interação para o Dashboard
+            await appendToSheet('Logs_Interacoes', {
+                Data_Hora: timestamp,
+                ID_Aluno: String(evoId),
+                Tipo: 'Hook_Message',
+                Mensagem: formattedMsg,
+                Status_Entrega: result.success ? 'OK' : 'Falhou',
+                Role: 'Engine/Schedule'
             })
         } catch (e) {
             console.error('[ScheduleEngine] Falha ao gravar Log_Envio:', e)
         }
-
-        // Registrar também no banco de dados para o Dashboard
-        await prisma.interaction.create({
-            data: {
-                studentId: student.id,
-                type: 'Hook_Message',
-                content: formattedMsg,
-                staffRole: 'Engine/Schedule'
-            }
-        })
     }
 
     // 4. Registrar na Planilha o 'Último Envio' (Data e Hora)
     const lastExecutionStr = `${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-    await updateSheetRow('Config_Campanhas', title, {
+
+    // Note: updateRowById is more robust than updateSheetRow (which used title as primary key)
+    await updateRowById('Config_Campanhas', 'Campanha', title, {
         'Ultimo_Envio': lastExecutionStr
     })
 

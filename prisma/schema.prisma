@@ -7,6 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  COORDINATOR
+  PROFESSOR
+  RECEPTION
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      Role     @default(RECEPTION)
+  unit      String?  // The unit they are assigned to
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Student {
   id              String   @id @default(cuid())
   evoId           String   @unique
@@ -52,9 +70,32 @@ model Interaction {
   id          String   @id @default(cuid())
   studentId   String
   student     Student  @relation(fields: [studentId], references: [id])
-  type        String   // "Reception_Alert", "Professor_Adjustment", "Coordinator_Review", "Hook_Message", "Generic"
+  type        String   // "Reception_Alert", "Professor_Adjustment", "Coordinator_Review", "Hook_Message", "FollowUp_24h", "Generic"
   content     String?  // Message sent or notes taken
   outcome     String?  // "Resolved", "Pending"
   staffRole   String?  // "Receptionist", "Professor", "Coordinator"
+  barrierType String?  // "BI" (Internal) or "BE" (External)
+  trainingMod String?  // Detailed training modification note
   createdAt   DateTime @default(now())
+}
+
+model Campaign {
+    id              String   @id @default(cuid())
+    title           String
+    audience        String   // "Red", "Yellow", "Relapse", "FirstWorkout"
+    frequency       Int      @default(1) // days
+    messageContent  String
+    isActive        Boolean  @default(true)
+    cron            String?  // RRULE string for scheduling
+    hora            String?  // HH:mm
+    diasSemana      String?  // ['Seg', 'Ter']
+    frequencyLabel  String?  // Weekly, etc.
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+}
+
+model AppConfig {
+    id          String @id @default(cuid())
+    key         String @unique
+    value       String
 }

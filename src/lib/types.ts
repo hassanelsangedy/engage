@@ -1,5 +1,6 @@
 
 export type Band = 'Red' | 'Yellow' | 'Green' | 'Blue' | 'Unknown';
+export type StatusAdesao = 'Risco Crítico' | 'Alerta' | 'Ideal' | 'Super Ativo' | 'Desconhecido';
 
 export interface Student {
     id: string;
@@ -11,9 +12,16 @@ export interface Student {
     consistency: number;
     score: number;
     band: Band;
+    statusAdesao?: StatusAdesao;
     barrier: string | null;
+    barrierType: string | null;
     lastWorkoutDate?: Date | null;
     updatedAt: Date;
+    lastMessageDate?: Date | null;
+    lastButtonClick?: Date | null;
+    message?: string;
+    shift?: string | null;
+    messageSentStatus?: 'pendente' | 'enviado' | 'erro' | 'Enviado via API' | 'Mensagem Enviada';
 }
 
 export interface Interaction {
@@ -39,4 +47,31 @@ export interface EfficacyReport {
         count: number;
         migrated: number;
     };
+}
+
+export interface Campaign {
+    id: string;
+    title: string;
+    audience: string;
+    frequency: number;
+    messageContent: string;
+    isActive: boolean;
+    cron: string | null;
+    hora: string | null;
+    diasSemana: string | null;
+    frequencyLabel: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export type Role = 'ADMIN' | 'COORDINATOR' | 'PROFESSOR' | 'RECEPTION';
+
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    password?: string;
+    role: Role;
+    unit?: string | null;
+    createdAt: Date;
 }

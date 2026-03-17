@@ -1,6 +1,14 @@
+import { Band, StatusAdesao } from './types';
+
+export function getStatusFromScore(score: number): { status: StatusAdesao, band: Band } {
+    if (score <= 3) return { status: 'Risco Crítico', band: 'Red' };
+    if (score <= 5) return { status: 'Alerta', band: 'Yellow' };
+    if (score <= 7) return { status: 'Ideal', band: 'Green' };
+    return { status: 'Super Ativo', band: 'Blue' };
+}
 
 export function calculateScore(workouts: number, weeksActive: number) {
-    // Score logic
+    // Legacy Score logic (can be kept or updated if needed, but the request focuses on Pontuacao_Risco)
     // Frequency (workouts/month):
     // 0-2: 1 pt
     // 3-5: 2 pts
@@ -23,13 +31,21 @@ export function calculateScore(workouts: number, weeksActive: number) {
 
     const total = freqScore + consScore;
 
-    // Bands
-    // Red: 2-3
-    // Yellow: 4-5
-    // Green: 6-8
-    let band = "Green";
+    // Legacy Bands mapping
+    let band: Band = "Green";
     if (total <= 3) band = "Red";
     else if (total <= 5) band = "Yellow";
+    else if (total >= 8) band = "Blue";
 
-    return { freqScore, consScore, total, band };
+    // Barrier Diagnosis
+    let barrier = "Desconhecida";
+    if (workouts <= 4 && weeksActive <= 2) {
+        barrier = "Monotonia / Baixa Autoeficácia";
+    } else if (workouts > 8 && weeksActive < 3) {
+        barrier = "Falta de Tempo / Sobrecarga";
+    } else if (band === "Red") {
+        barrier = "Perda de Sentido / Social";
+    }
+
+    return { freqScore, consScore, total, band, barrier };
 }
