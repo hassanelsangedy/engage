@@ -1,42 +1,56 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSheetRows } from '@/lib/sheets';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    const url = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+
+    // 1. Show env var presence (never show values)
+    const envCheck = {
+        SUPABASE_URL: !!url,
+        SUPABASE_SERVICE_ROLE_KEY: !!serviceKey,
+        SUPABASE_SERVICE_ROLE_KEY_prefix: serviceKey?.substring(0, 12) || 'MISSING',
+        NEXTAUTH_SECRET: !!nextAuthSecret,
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'MISSING',
+    };
+
+    if (!url || !serviceKey) {
+        return res.status(500).json({ error: 'Missing Supabase env vars', envCheck });
+    }
+
     try {
-        console.log('[TestDB] Testing Google Sheets Connection...');
+        const supabase = createClient(url, serviceKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
 
-        // 1. Try to fetch sheets metadata or any row from 'Usuarios'
-        const rows = await getSheetRows('Usuarios');
+        // 2. Test: list users from usuarios table
+        const { data: users, error } = await supabase
+            .from('usuarios')
+            .select('email, role, status')
+            .limit(10);
 
-        if (!rows || rows.length === 0) {
-            return res.status(404).json({
-                error: 'No rows found in "Usuarios" sheet.',
-                tips: 'Check if the sheet title "Usuarios" is correct and if the service account has access.'
+        if (error) {
+            return res.status(500).json({
+                error: 'Supabase query failed',
+                details: error.message,
+                hint: error.hint,
+                envCheck
             });
         }
 
-        // 2. Return column names to verify headers
-        const headers = Object.keys(rows[0]);
-        const sampleEmail = rows[0].Email || rows[0].email;
-
         return res.status(200).json({
-            status: 'success',
-            rowCount: rows.length,
-            detectedHeaders: headers,
-            sampleFound: !!sampleEmail,
-            credentialsCheck: {
-                hasEmailEnv: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                hasKeyEnv: !!process.env.GOOGLE_PRIVATE_KEY,
-                hasSheetIdEnv: !!process.env.GOOGLE_SHEET_ID
-            }
+            status: 'SUCCESS ✅',
+            userCount: users?.length || 0,
+            users: users?.map(u => ({ email: u.email, role: u.role, status: u.status })),
+            envCheck
         });
-    } catch (error: any) {
-        console.error('[TestDB] Critical Error:', error);
+    } catch (err: any) {
         return res.status(500).json({
-            status: 'error',
-            message: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: 'Supabase connection exception',
+            message: err.message,
+            envCheck
         });
     }
 }
