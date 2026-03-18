@@ -60,7 +60,12 @@ const COLUMN_MAP: Record<string, Record<string, string>> = {
  */
 async function getSheetDoc() {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const rawKey = process.env.GOOGLE_PRIVATE_KEY || '';
+
+    // Handle the private key - replace literal backslash-n sequences with real newlines
+    const key = rawKey.includes('\\n')
+        ? rawKey.split('\\n').join('\n')
+        : rawKey;
 
     if (!email || !key) {
         throw new Error('Google credentials missing - set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY');
