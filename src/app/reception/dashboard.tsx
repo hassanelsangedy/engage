@@ -93,13 +93,14 @@ export default function ReceptionDashboard({ initialStudents, allBaseStudents, u
         
         try {
             // rawMessage is ignored — backend always sends the 'mensagem_1' Meta template
-            const res = await sendAutomaticMessage(id, phoneWithCountry, '');
+            const res: any = await sendAutomaticMessage(id, phoneWithCountry, '');
             if (res.success) {
                 setSentMessageIds(prev => new Set(prev).add(id));
                 toast.success('Mensagem enviada com sucesso!');
             } else {
-                console.error('Meta API Error:', res.error);
-                toast.error(`Erro da API: ${typeof res.error === 'object' ? JSON.stringify(res.error) : res.error}`);
+                const apiError = res.error || 'Erro desconhecido';
+                console.error('Meta API Error:', apiError);
+                toast.error(`Erro da API: ${typeof apiError === 'object' ? JSON.stringify(apiError) : apiError}`);
             }
         } catch (error) {
             console.error('Send message error:', error);

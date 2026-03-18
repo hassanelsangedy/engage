@@ -3,6 +3,7 @@
 
 import { Student, Band } from '@/lib/types'
 import { getAllAtRiskStudents, registerReceptionLog, getStudentByEvoId } from '@/lib/students'
+import { sendWhatsAppMessage } from '@/lib/whatsapp'
 import { supabase } from '@/lib/supabase'
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
@@ -170,10 +171,10 @@ export async function updateMessageStatus(evoId: string, message: string) {
     return { success: true };
 }
 
-export async function sendAutomaticMessage(evoId: string, phone: string, rawMessage: string) {
-    const { sendWhatsAppMessage } = await import('@/lib/whatsapp');
+export async function sendAutomaticMessage(evoId: string, phone: string, rawMessage: string): Promise<{ success: boolean; error?: any }> {
     
     const session = await getServerSession(authOptions);
+
     const userName = session?.user?.name || session?.user?.email || 'Sistema';
 
     // 1. Fetch student for personalization
