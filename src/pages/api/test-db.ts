@@ -9,11 +9,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 1. Show env var presence (never show values)
     const envCheck = {
-        SUPABASE_URL: !!url,
-        SUPABASE_SERVICE_ROLE_KEY: !!serviceKey,
-        SUPABASE_SERVICE_ROLE_KEY_prefix: serviceKey?.substring(0, 12) || 'MISSING',
-        NEXTAUTH_SECRET: !!nextAuthSecret,
+        SUPABASE_URL: !!process.env.SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'MISSING',
+        WHATSAPP_ACCESS_TOKEN: !!process.env.WHATSAPP_ACCESS_TOKEN,
+        WHATSAPP_PHONE_NUMBER_ID: !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+        WHATSAPP_VERIFY_TOKEN: !!process.env.WHATSAPP_VERIFY_TOKEN,
     };
 
     if (!url || !serviceKey) {
