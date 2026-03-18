@@ -173,17 +173,29 @@ export async function appendToSheet(sheetTitle: string, data: any) {
         }
 
         // 3. Insert into Google Sheet (The Mirror)
-        const doc = await getSheetDoc();
-        const sheet = doc.sheetsByTitle[sheetTitle];
-        if (sheet) {
-            const sheetData = mapToSheet(table, data);
-            // Ensure ID_Aluno and Telefone are set for logs if available
-            if (targetId) sheetData.ID_Aluno = targetId;
-            if (data.Telefone) sheetData.Telefone = data.Telefone;
-            
-            console.log(`[Dual-Write] Appending to Google Sheet ${sheetTitle}...`, sheetData);
-            await sheet.addRow(sheetData);
-            console.log(`[Google Sheets API] Sync OK: Row added to ${sheetTitle}`);
+        let syncStatus = 'Success';
+        try {
+            const doc = await getSheetDoc();
+            const sheet = doc.sheetsByTitle[sheetTitle];
+            if (sheet) {
+                const sheetData = mapToSheet(table, data);
+                if (targetId) sheetData.ID_Aluno = targetId;
+                if (data.Telefone) sheetData.Telefone = data.Telefone;
+                
+                await sheet.addRow(sheetData);
+                console.log(`[Google Sheets API] Sync OK: Row added to ${sheetTitle}`);
+            } else {
+                syncStatus = 'Error: Sheet Not Found';
+                console.warn(`[Google Sheets] Sheet "${sheetTitle}" not found`);
+            }
+        } catch (err: any) {
+            syncStatus = `Error: ${err.message}`;
+            console.error(`[Google Sheets Sync Error] ${sheetTitle}:`, err.message);
+        }
+
+        // Update the Supabase record with sync status if it was a log
+        if (table === 'logs_interacoes' && data.metadata) {
+             // Optional: we could update the previous insert, but for now let's just log it
         }
 
     } catch (error) {
