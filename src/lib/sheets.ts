@@ -1,5 +1,9 @@
 
+import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { JWT } from 'google-auth-library';
 import { supabase } from './supabase';
+
+const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID || '1wb_CVBbFbasy9cvZFVyhZOLwZkcpUyrsvFP6a_OlbNo';
 
 const TABLE_MAP: Record<string, string> = {
     'Base_Alunos': 'alunos',
@@ -50,6 +54,28 @@ const COLUMN_MAP: Record<string, Record<string, string>> = {
     }
 };
 
+/**
+ * Helper to get Sheet Instance (with Auth)
+ */
+async function getSheetDoc() {
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+    if (!email || !key) {
+        throw new Error('Google credentials missing - set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY');
+    }
+
+    const auth = new JWT({
+        email: email,
+        key: key,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+    await doc.loadInfo();
+    return doc;
+}
+
 function mapToSheet(table: string, data: any) {
     const map = COLUMN_MAP[table];
     if (!map) return data;
@@ -58,14 +84,18 @@ function mapToSheet(table: string, data: any) {
         if (data[dbKey] !== undefined) {
             result[sheetKey] = data[dbKey];
         } else if (data[sheetKey] !== undefined) {
-            result[sheetKey] = data[sheetKey]; // Already mapped or using sheet key
+            result[sheetKey] = data[sheetKey];
         }
     }
-    // Add internal ID
+    // Handle IDs
     if (data.id) result.ID_Geral = data.id;
     if (data.id_evo) result.ID_Aluno = data.id_evo;
+    if (data.aluno_id && !result.ID_Aluno) {
+        // If we have aluno_id (UUID), we might need to resolve it back to EVO ID for the sheet?
+        // But the mapping usually happens the other way.
+    }
 
-    return { ...data, ...result };
+    return result;
 }
 
 function mapToDb(table: string, data: any) {
@@ -75,18 +105,21 @@ function mapToDb(table: string, data: any) {
     for (const [dbKey, sheetKey] of Object.entries(map)) {
         if (data[sheetKey] !== undefined) {
             result[dbKey] = data[sheetKey];
+        } else if (data[dbKey] !== undefined) {
+            result[dbKey] = data[dbKey]; // Already mapped
         }
     }
     return result;
 }
 
+/**
+ * Fetch rows from Supabase (mapped to Sheet names if possible)
+ */
 export async function getSheetRows(sheetTitle: string) {
     const table = TABLE_MAP[sheetTitle];
     if (!table) return [];
 
     let query = supabase.from(table).select('*');
-    
-    // For logs, join with student to get ID_Aluno (evo_id)
     if (table === 'logs_interacoes' || table === 'monitoramento_hedonico' || table === 'diagnostico_respostas') {
         query = query.select('*, alunos(id_evo)');
     }
@@ -106,41 +139,83 @@ export async function getSheetRows(sheetTitle: string) {
     });
 }
 
+/**
+ * Append to BOTH Supabase and Google Sheet
+ */
 export async function appendToSheet(sheetTitle: string, data: any) {
-    const table = TABLE_MAP[sheetTitle];
-    if (!table) return;
+    try {
+        const table = TABLE_MAP[sheetTitle] || sheetTitle;
+        const dbData = mapToDb(table, data);
+        
+        // 1. Resolve alumno_id (UUID) from ID_Aluno (EVO ID) if needed
+        if (data.ID_Aluno && !dbData.aluno_id) {
+            const { data: student } = await supabase.from('alunos').select('id').eq('id_evo', data.ID_Aluno).single();
+            if (student) dbData.aluno_id = student.id;
+        }
 
-    const dbData = mapToDb(table, data);
-    
-    // Resolve aluno_id from ID_Aluno (evo_id)
-    if (data.ID_Aluno && !dbData.aluno_id) {
-        const { data: student } = await supabase.from('alunos').select('id').eq('id_evo', data.ID_Aluno).single();
-        if (student) dbData.aluno_id = student.id;
+        // 2. Insert into Supabase
+        const { error: dbError } = await supabase.from(table).insert([dbData]);
+        if (dbError) {
+            console.error('[Supabase Sync Error]:', dbError);
+        }
+
+        // 3. Insert into Google Sheet (The Mirror)
+        const doc = await getSheetDoc();
+        const sheet = doc.sheetsByTitle[sheetTitle];
+        if (sheet) {
+            const sheetData = mapToSheet(table, data);
+            // Ensure ID_Aluno is set if available
+            if (data.ID_Aluno) sheetData.ID_Aluno = data.ID_Aluno;
+            await sheet.addRow(sheetData);
+            console.log(`[Google Sheets API] Sync OK: Row added to ${sheetTitle}`);
+        }
+
+    } catch (error) {
+        console.error(`[Dual-Write Sync Error] appendToSheet(${sheetTitle}):`, error);
     }
-
-    const { error } = await supabase.from(table).insert([dbData]);
-    if (error) console.error(`[Supabase] Error inserting into ${sheetTitle}:`, error);
 }
 
+/**
+ * Update BOTH Supabase and Google Sheet
+ */
 export async function updateRowById(sheetTitle: string, idColumn: string, idValue: string, updateData: any) {
-    const table = TABLE_MAP[sheetTitle];
-    if (!table) return false;
+    try {
+        const table = TABLE_MAP[sheetTitle] || sheetTitle;
+        const dbData = mapToDb(table, updateData);
+        
+        // 1. Update Supabase
+        let query = supabase.from(table).update(dbData);
+        if (idColumn === 'ID_EVO' || idColumn === 'ID_Aluno' || idColumn === 'id_evo') {
+            query = query.eq('id_evo', idValue);
+        } else if (idColumn === 'ID_Geral' || idColumn === 'id') {
+            query = query.eq('id', idValue);
+        } else {
+            query = query.eq(idColumn, idValue);
+        }
+        const { error: dbError } = await query;
 
-    const dbData = mapToDb(table, updateData);
-    
-    let query = supabase.from(table).update(dbData);
-    if (idColumn === 'ID_EVO' || idColumn === 'ID_Aluno') {
-        query = query.eq('id_evo', idValue);
-    } else {
-        query = query.eq('id', idValue);
-    }
-
-    const { error } = await query;
-    if (error) {
-        console.error(`[Supabase] Error updating ${sheetTitle}:`, error);
+        // 2. Update Google Sheet
+        const doc = await getSheetDoc();
+        const sheet = doc.sheetsByTitle[sheetTitle];
+        if (sheet) {
+            const rows = await sheet.getRows();
+            const row = rows.find(r => r.get(idColumn) == idValue);
+            if (row) {
+                const sheetUpdate = mapToSheet(table, updateData);
+                for (const [key, value] of Object.entries(sheetUpdate)) {
+                    row.set(key, value);
+                }
+                const now = new Date();
+                row.set('Ultima_Interacao', `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
+                await row.save();
+                console.log(`[Google Sheets API] Sync OK: Updated ${idValue} in ${sheetTitle}`);
+            }
+        }
+        return !dbError;
+    } catch (error) {
+        console.error(`[Dual-Write Sync Error] updateRowById(${sheetTitle}):`, error);
         return false;
     }
-    return true;
 }
 
 export async function findStudentByPhone(phone: string) {
@@ -155,34 +230,11 @@ export async function findStudentByPhone(phone: string) {
     return mapToSheet('alunos', data);
 }
 
-export async function getRecentSheetRows(sheetTitle: string, limit: number = 10) {
-    const table = TABLE_MAP[sheetTitle];
-    if (!table) return [];
-
-    const { data, error } = await supabase
-        .from(table)
-        .select('*, alunos(id_evo)')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-    if (error) return [];
-    return data.map(row => {
-        const mapped = mapToSheet(table, row);
-        if (row.alunos) mapped.ID_Aluno = row.alunos.id_evo;
-        return mapped;
-    });
-}
-
-// Preserve other functions by mapping or implementing
-export async function updateSheetRow(sheetTitle: string, campaignTitle: string, updateData: any) {
-    // This is for Campaigns, which I haven't migrated yet
-    console.warn('updateSheetRow (Campaigns) not yet implemented for Supabase');
-}
-
 export async function findRowByColumn(sheetTitle: string, columnName: string, columnValue: string) {
     const table = TABLE_MAP[sheetTitle];
-    if (!table) return null;
-    
-    const { data } = await supabase.from(table).select('*').eq(columnName, columnValue).limit(1).single();
-    return data ? mapToSheet(table, data) : null;
+    if (table) {
+        const { data } = await supabase.from(table).select('*').eq(columnName, columnValue).limit(1).single();
+        if (data) return mapToSheet(table, data);
+    }
+    return null;
 }

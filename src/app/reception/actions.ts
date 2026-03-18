@@ -147,29 +147,27 @@ export async function checkNewAcolhimentos(lastSeenTimestamp: string) {
 
 export async function updateMessageStatus(evoId: string, message: string) {
     const timestamp = new Date().toISOString();
-    
-    // Get internal ID
-    const { data: student } = await supabase.from('alunos').select('id').eq('id_evo', evoId).single();
-    if (!student) return { success: false };
+    const { updateRowById, appendToSheet } = await import('@/lib/sheets');
 
-    await supabase.from('alunos').update({
+    await updateRowById('Base_Alunos', 'ID_EVO', evoId, {
         updated_at: timestamp,
         last_button_click: timestamp,
         status_envio: 'enviado'
-    }).eq('id', student.id);
+    });
     
-    await supabase.from('logs_interacoes').insert({
-        data_hora: timestamp,
-        aluno_id: student.id,
-        tipo: 'Hook_Message',
-        mensagem: `WhatsApp Enviado manualmente pela Recepção: ${message.substring(0, 100)}...`,
-        status_entrega: 'OK',
-        classificacao: 'N/A',
-        role: 'Recepção'
+    await appendToSheet('Logs_Interacoes', {
+        Data_Hora: timestamp,
+        ID_Aluno: evoId,
+        Tipo: 'Hook_Message',
+        Mensagem: `WhatsApp Enviado manualmente pela Recepção: ${message.substring(0, 100)}...`,
+        Status_Entrega: 'OK',
+        Classificacao: 'N/A',
+        Role: 'Recepção'
     });
     
     return { success: true };
 }
+
 
 export async function sendAutomaticMessage(evoId: string, phone: string, rawMessage: string): Promise<{ success: boolean; error?: any }> {
     try {
@@ -192,6 +190,7 @@ export async function sendAutomaticMessage(evoId: string, phone: string, rawMess
         const personalizedMessage = rawMessage
             ? rawMessage.replace(/{{nome}}/g, firstName).replace(/{{Ultima_Presenca}}/g, lastWorkout)
             : `[Meta Template: mensagem_1] Olá, ${firstName}...`;
+        const finalLogMessage = personalizedMessage || `[Meta Template: mensagem_1] Olá, ${firstName}...`;
 
         // 2. Send WhatsApp using Meta Template 'mensagem_1'
         const result: any = await sendWhatsAppMessage(phone, personalizedMessage, {
@@ -204,29 +203,31 @@ export async function sendAutomaticMessage(evoId: string, phone: string, rawMess
             return { success: false, error: result.error };
         }
 
-        // 3. Update student in Supabase with contact metadata
+        // 3. Update student in Supabase + Google Sheets (Dual-Write)
         const now = new Date();
         const timestamp = now.toISOString();
 
-        await supabase.from('alunos').update({
+        const { updateRowById, appendToSheet } = await import('@/lib/sheets');
+
+        await updateRowById('Base_Alunos', 'ID_EVO', evoId, {
             updated_at: timestamp,
             last_button_click: timestamp,
             status_envio: 'Mensagem Enviada',
             data_envio: format(now, 'dd/MM/yyyy'),
             hora_envio: format(now, 'HH:mm:ss'),
             usuario_envio: userName
-        }).eq('id', student.id);
+        });
 
-        // 4. Log interaction
-        await supabase.from('logs_interacoes').insert({
-            data_hora: timestamp,
-            aluno_id: student.id,
-            tipo: 'Acolhimento',
-            mensagem: personalizedMessage,
-            status_entrega: 'OK',
-            status_envio: 'OK',
-            classificacao: 'N/A',
-            role: 'Recepção',
+        // 4. Log interaction in BOTH Supabase and Google Sheets
+        await appendToSheet('Logs_Interacoes', {
+            Data_Hora: timestamp,
+            ID_Aluno: evoId,
+            Tipo: 'Acolhimento',
+            Mensagem: finalLogMessage,
+            Status_Entrega: 'OK',
+            Status_Envio: 'OK',
+            Classificacao: 'N/A',
+            Role: 'Recepção',
             metadata: {
                 whatsapp_result: result.data || result,
                 whatsapp_mode: result.mode || 'LIVE',
