@@ -40,7 +40,8 @@ const COLUMN_MAP: Record<string, Record<string, string>> = {
         'mensagem': 'Mensagem',
         'status_entrega': 'Status_Entrega',
         'classificacao': 'Classificacao',
-        'role': 'Role'
+        'role': 'Role',
+        'metadata': 'Metadata' // To allow it to pass through to DB
     },
     'perfil_professores': {
         'nome': 'Nome',
@@ -109,9 +110,10 @@ function mapToDb(table: string, data: any) {
             result[dbKey] = data[dbKey]; // Already in DB format
         }
     }
-    // Specific logic for UUID foreign keys
+    // Specific logic for UUID foreign keys and JSONB metadata
     if (table === 'logs_interacoes' || table === 'monitoramento_hedonico') {
         if (data.aluno_id) result.aluno_id = data.aluno_id;
+        if (data.metadata) result.metadata = data.metadata;
     }
     return result;
 }
