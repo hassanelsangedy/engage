@@ -106,8 +106,12 @@ function mapToDb(table: string, data: any) {
         if (data[sheetKey] !== undefined) {
             result[dbKey] = data[sheetKey];
         } else if (data[dbKey] !== undefined) {
-            result[dbKey] = data[dbKey]; // Already mapped
+            result[dbKey] = data[dbKey]; // Already in DB format
         }
+    }
+    // Specific logic for UUID foreign keys
+    if (table === 'logs_interacoes' || table === 'monitoramento_hedonico') {
+        if (data.aluno_id) result.aluno_id = data.aluno_id;
     }
     return result;
 }
@@ -147,12 +151,19 @@ export async function appendToSheet(sheetTitle: string, data: any) {
         const table = TABLE_MAP[sheetTitle] || sheetTitle;
         const dbData = mapToDb(table, data);
         
-        // 1. Resolve alumno_id (UUID) from ID_Aluno (EVO ID) if needed
-        if (data.ID_Aluno && !dbData.aluno_id) {
-            const { data: student } = await supabase.from('alunos').select('id').eq('id_evo', data.ID_Aluno).single();
-            if (student) dbData.aluno_id = student.id;
+        let targetId = data.ID_Aluno || data.id_evo;
+
+        // 1. Resolve alumno_id (UUID) from ID_Aluno (EVO ID) for DB if missing
+        if (targetId && !dbData.aluno_id && (table === 'logs_interacoes' || table === 'monitoramento_hedonico')) {
+            const { data: student } = await supabase.from('alunos').select('id, telefone').eq('id_evo', targetId).single();
+            if (student) {
+                dbData.aluno_id = student.id;
+                // If the sheet data doesnt have a phone, we can add it from the DB student
+                if (!data.Telefone && student.telefone) data.Telefone = student.telefone;
+            }
         }
 
+        console.log(`[Dual-Write] Inserting into Supabase ${table}...`, dbData);
         // 2. Insert into Supabase
         const { error: dbError } = await supabase.from(table).insert([dbData]);
         if (dbError) {
@@ -164,8 +175,11 @@ export async function appendToSheet(sheetTitle: string, data: any) {
         const sheet = doc.sheetsByTitle[sheetTitle];
         if (sheet) {
             const sheetData = mapToSheet(table, data);
-            // Ensure ID_Aluno is set if available
-            if (data.ID_Aluno) sheetData.ID_Aluno = data.ID_Aluno;
+            // Ensure ID_Aluno and Telefone are set for logs if available
+            if (targetId) sheetData.ID_Aluno = targetId;
+            if (data.Telefone) sheetData.Telefone = data.Telefone;
+            
+            console.log(`[Dual-Write] Appending to Google Sheet ${sheetTitle}...`, sheetData);
             await sheet.addRow(sheetData);
             console.log(`[Google Sheets API] Sync OK: Row added to ${sheetTitle}`);
         }
