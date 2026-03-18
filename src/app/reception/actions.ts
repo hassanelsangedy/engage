@@ -172,83 +172,73 @@ export async function updateMessageStatus(evoId: string, message: string) {
 }
 
 export async function sendAutomaticMessage(evoId: string, phone: string, rawMessage: string): Promise<{ success: boolean; error?: any }> {
-    
-    const session = await getServerSession(authOptions);
+    try {
+        const session = await getServerSession(authOptions);
+        const userName = session?.user?.name || session?.user?.email || 'Sistema';
 
-    const userName = session?.user?.name || session?.user?.email || 'Sistema';
+        // 1. Fetch student for personalization
+        const { data: student, error: studentError } = await supabase.from('alunos').select('*').eq('id_evo', evoId).single();
+        
+        if (studentError || !student) {
+            console.error('[Supabase] Student not found for ID:', evoId);
+            return { success: false, error: 'Aluno não encontrado no banco de dados.' };
+        }
 
-    // 1. Fetch student for personalization
-    const { data: student } = await supabase.from('alunos').select('*').eq('id_evo', evoId).single();
-    let personalizedMessage = rawMessage;
-
-    if (student) {
         const firstName = (student.nome || 'Aluno').split(' ')[0];
         const lastWorkout = student.ultima_presenca 
             ? format(new Date(student.ultima_presenca), "dd/MM/yyyy") 
             : 'um tempo';
 
-        personalizedMessage = rawMessage
-            .replace(/{{nome}}/g, firstName)
-            .replace(/{{Ultima_Presenca}}/g, lastWorkout);
-    }
-    const studentName = student ? (student.nome || 'Aluno').split(' ')[0] : 'Aluno';
+        const personalizedMessage = rawMessage
+            ? rawMessage.replace(/{{nome}}/g, firstName).replace(/{{Ultima_Presenca}}/g, lastWorkout)
+            : `[Meta Template: mensagem_1] Olá, ${firstName}...`;
 
-    // 2. Send WhatsApp using Meta Template 'mensagem_1'
-    const result = await sendWhatsAppMessage(phone, personalizedMessage, {
-        studentName: studentName,
-        templateName: 'mensagem_1'
-    });
+        // 2. Send WhatsApp using Meta Template 'mensagem_1'
+        const result: any = await sendWhatsAppMessage(phone, personalizedMessage, {
+            studentName: firstName,
+            templateName: 'mensagem_1'
+        });
 
-    if (!result.success) {
-        console.error('[WhatsApp API] Failed to send message:', result.error);
-        return { success: false, error: result.error };
-    }
+        if (!result.success) {
+            console.error('[WhatsApp API] Failed to send message:', result.error);
+            return { success: false, error: result.error };
+        }
 
-    const now = new Date();
-    const timestamp = now.toISOString();
+        // 3. Update student in Supabase with contact metadata
+        const now = new Date();
+        const timestamp = now.toISOString();
 
-    if (!student) {
-        return { success: false, error: 'Aluno não encontrado para atualização no DB.' };
-    }
+        await supabase.from('alunos').update({
+            updated_at: timestamp,
+            last_button_click: timestamp,
+            status_envio: 'Mensagem Enviada',
+            data_envio: format(now, 'dd/MM/yyyy'),
+            hora_envio: format(now, 'HH:mm:ss'),
+            usuario_envio: userName
+        }).eq('id', student.id);
 
-    // 3. Update student in Supabase with contact metadata
-    const { error: updateError } = await supabase.from('alunos').update({
-        updated_at: timestamp,
-        last_button_click: timestamp,
-        status_envio: 'Mensagem Enviada',
-        data_envio: format(now, 'dd/MM/yyyy'),
-        hora_envio: format(now, 'HH:mm:ss'),
-        usuario_envio: userName
-    }).eq('id', student.id); // Use UUID
-    
-    if (updateError) {
-        console.error('[Supabase] Update Aluno Error:', updateError);
-    }
-
-    // 4. Log interaction using UUID and requested 'Acolhimento' type
-    const { error: logError } = await supabase.from('logs_interacoes').insert({
-        data_hora: timestamp,
-        aluno_id: student.id, // Explicitly the UUID from table alumnos
-        tipo: 'Acolhimento',  // Set as requested
-        mensagem: personalizedMessage,
-        status_entrega: 'OK',
-        status_envio: 'OK',    // Explicitly requested
-        classificacao: 'N/A',
-        role: 'Recepção'
-    });
-
-    if (logError) {
-        console.error('[Supabase] CRITICAL INSERT ERROR (logs_interacoes):', {
-            error: logError,
-            message: logError.message,
-            details: logError.details,
-            hint: logError.hint,
-            attemptedData: {
-                aluno_id: student.id,
-                tipo: 'Acolhimento'
+        // 4. Log interaction
+        await supabase.from('logs_interacoes').insert({
+            data_hora: timestamp,
+            aluno_id: student.id,
+            tipo: 'Acolhimento',
+            mensagem: personalizedMessage,
+            status_entrega: 'OK',
+            status_envio: 'OK',
+            classificacao: 'N/A',
+            role: 'Recepção',
+            metadata: {
+                whatsapp_result: result.data || result,
+                whatsapp_mode: result.mode || 'LIVE',
+                template_used: 'mensagem_1',
+                recipient_phone: phone,
+                sender_user: userName
             }
         });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Send message exception:', error);
+        return { success: false, error: error.message || 'Erro inesperado no servidor' };
     }
-    
-    return { success: true };
 }

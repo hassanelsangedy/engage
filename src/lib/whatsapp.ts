@@ -17,15 +17,19 @@ export async function sendWhatsAppMessage(
 
     if (!ACCESS_TOKEN) {
         console.warn('[WhatsApp] WHATSAPP_ACCESS_TOKEN not found. Running in MOCK mode.');
-        console.log(`[MOCK EMAIL to ${cleanPhone}]: ${message}`);
-        return { success: true, messageId: `mock_${Date.now()}` };
+        return { 
+            success: true, 
+            messageId: `mock_${Date.now()}`,
+            mode: 'MOCK',
+            note: 'Token missing - using Mock mode'
+        };
     }
 
     // Default to 'mensagem_1' if no template specified, as requested by user
     const templateName = options?.templateName || 'mensagem_1';
 
     try {
-        console.log(`[WhatsApp API] Sending Template: ${templateName} to ${cleanPhone}...`);
+        console.log(`[WhatsApp API] Sending Template: ${templateName} to ${cleanPhone} (Mode: LIVE)...`);
 
         const response = await fetch(`https://graph.facebook.com/${API_VERSION}/${PHONE_NUMBER_ID}/messages`, {
             method: 'POST',
@@ -65,7 +69,8 @@ export async function sendWhatsAppMessage(
             return { 
                 success: false, 
                 error: `Meta API Error: ${data.error?.message || 'Erro desconhecido'} (Code: ${data.error?.code})`,
-                fullData: data
+                fullData: data,
+                mode: 'LIVE'
             };
         }
 
@@ -73,14 +78,16 @@ export async function sendWhatsAppMessage(
         return { 
             success: true, 
             messageId: data.messages?.[0]?.id,
+            mode: 'LIVE',
             data: data
         };
 
     } catch (error: any) {
         console.error('[WhatsApp API] Fetch Exception:', error);
-        return { success: false, error: `Exception: ${error.message || String(error)}` };
+        return { success: false, error: `Exception: ${error.message || String(error)}`, mode: 'LIVE' };
     }
 }
+
 
 /**
  * Specifically sends a WhatsApp Template (Keeping for backward compatibility if needed)
