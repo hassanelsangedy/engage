@@ -21,8 +21,7 @@ import {
 } from 'lucide-react'
 import { 
     getCoordinatorControlCenterData, 
-    updateStudentPR, 
-    generateMonthlyCoordinatorReport 
+    updateStudentPR
 } from './actions'
 import BackgroundDecoration from '@/components/ui/background-decoration'
 
@@ -51,11 +50,15 @@ export default function ControlCenter() {
     }, [unitFilter, periodFilter])
 
     const handleGenerateReport = async () => {
-        const res = await generateMonthlyCoordinatorReport()
-        if (res.success) {
-            setReportData(res)
-            setIsReportModalOpen(true)
-        }
+        // TODO: implement generateMonthlyCoordinatorReport in coordinator/actions.ts
+        setReportData({
+            date: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+            totalStudents: data?.stats?.total || 0,
+            redRankPercentage: data?.stats?.redPercent || 0,
+            biCount: data?.biStudents?.length || 0,
+            success: true
+        })
+        setIsReportModalOpen(true)
     }
 
     const handleUpdatePR = async (studentId: string, profName: string) => {
